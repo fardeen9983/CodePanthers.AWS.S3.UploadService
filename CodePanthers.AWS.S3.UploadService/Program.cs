@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -13,14 +14,17 @@ namespace CodePanthers.AWS.S3.UploadService
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            CreateHostBuilder(args).Run();
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder =>
+        public static IWebHost CreateHostBuilder(string[] args) =>
+             WebHost.CreateDefaultBuilder(args)
+                .UseStartup<Startup>()
+                .ConfigureAppConfiguration((builder, config) =>
                 {
-                    webBuilder.UseStartup<Startup>();
-                });
+                    config.AddJsonFile("appsettings.json", optional: false,reloadOnChange : true);
+                })
+                .Build();
+
     }
 }
