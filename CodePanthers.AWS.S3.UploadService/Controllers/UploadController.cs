@@ -9,9 +9,11 @@ namespace CodePanthers.AWS.S3.UploadService.Controllers
     public class UploadController : Controller
     {
         private readonly IFileUploadService _fileUploadService;
-        public UploadController(IFileUploadService fileUploadService)
+        private readonly INotificationService _notificationService;
+        public UploadController(IFileUploadService fileUploadService, INotificationService notificationService)
         {
             _fileUploadService = fileUploadService;
+            _notificationService = notificationService;
         }
 
         [HttpPost]
@@ -22,6 +24,20 @@ namespace CodePanthers.AWS.S3.UploadService.Controllers
                 return Ok(new { status = "Success", url = presignedUrl });
             else
                 return BadRequest(new { status = "Failed", message = "Something went wrong" });
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> RegisterEmailSubscription([FromBody] string email)
+        {
+            if (string.IsNullOrEmpty(email))
+            {
+                return BadRequest(new { status = "Failed", message = "Enter a valid Email Address" });
+            }
+            else
+            {
+                await _notificationService.RegisterSubscirption(email);
+                return Ok(new { status = "success", message = "Email succesfully registered" });
+            }
         }
     }
 }

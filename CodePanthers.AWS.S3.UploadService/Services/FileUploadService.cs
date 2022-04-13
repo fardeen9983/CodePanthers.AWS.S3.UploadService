@@ -1,4 +1,5 @@
 ﻿using Amazon.S3;
+using Amazon.SimpleNotificationService;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using Amazon.S3.Util;
@@ -6,24 +7,35 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
-using System.Net;
 using System.Threading.Tasks;
+using Amazon.SimpleNotificationService.Model;
 
 namespace CodePanthers.AWS.S3.UploadService.Services
 {
+    /// <summary>
+    /// Allows user to upload Files to S3 Bucket and Generate Presigned URLs
+    /// </summary>
     public class FileUploadService : IFileUploadService
     {
         private readonly IAmazonS3 _client;
         private readonly string BucketName;
+        private readonly INotificationService _notificationService;
         private readonly long MB = (long)Math.Pow(2, 20);
         private readonly int ExpirationDurationInHours;
 
-        public FileUploadService(IAmazonS3 client, IConfiguration Configuration)
+        public FileUploadService(IAmazonS3 s3Client,INotificationService notificationService, IConfiguration Configuration)
         {
-            _client = client;
+            _client = s3Client;
+            _notificationService = notificationService;
             BucketName = Configuration["S3BucketName"];
             ExpirationDurationInHours = int.Parse(Configuration["S3ObjectExpirationHours"]);
         }
+
+        /// <summary>
+        /// Generates a presigned URL of the file if it is successfully uploaded to S3
+        /// </summary>
+        /// <param name="file">File to be Uploaded</param>
+        /// <returns></returns>
         public async Task<string> GetS3ObjectPresignedUrl(IFormFile file)
         {
             try
@@ -38,22 +50,28 @@ namespace CodePanthers.AWS.S3.UploadService.Services
                         Key = key,
                         Expires = DateTime.UtcNow.AddHours(ExpirationDurationInHours),
                     };
-
+                    await _notificationService.SendUploadNotification("hello");
                     return _client.GetPreSignedURL(getUrlRequest);
                 }
 
                 return null;
             }
-            catch (AmazonS3Exception e)
+            catch (AmazonS3Exception)
             {
                 throw;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw;
             }
         }
 
+        /// <summary>
+        /// Uploads the file to S3 Bucket if it exists
+        /// </summary>
+        /// <param name="file">Uploaded File</param>
+        /// <param name="key">Object Key for S3</param>
+        /// <returns></returns>
         private async Task<bool> UploadFileToS3(IFormFile file, string key)
         {
             try
@@ -88,10 +106,12 @@ namespace CodePanthers.AWS.S3.UploadService.Services
                 }
 
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw;
             }
         }
+
+        
     }
 }

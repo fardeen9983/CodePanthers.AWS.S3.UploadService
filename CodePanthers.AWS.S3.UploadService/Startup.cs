@@ -1,4 +1,5 @@
 using Amazon.S3;
+using Amazon.SimpleNotificationService;
 using CodePanthers.AWS.S3.UploadService.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -33,7 +34,9 @@ namespace CodePanthers.AWS.S3.UploadService
 
             services.AddDefaultAWSOptions(Configuration.GetAWSOptions());
             services.AddAWSService<IAmazonS3>();
+            services.AddAWSService<IAmazonSimpleNotificationService>();
 
+            services.AddTransient<INotificationService, NotificationService>();
             services.AddTransient<IFileUploadService, FileUploadService>();
         }
 
