@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/CodePanthers.AWS.S3.UploadService/PrivateKey.xml
+/CodePanthers.AWS.S3.UploadService/PrivateKey.pem

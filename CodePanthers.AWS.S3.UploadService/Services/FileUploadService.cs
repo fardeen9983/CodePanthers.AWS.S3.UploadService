@@ -1,14 +1,13 @@
 ﻿using Amazon.S3;
-using Amazon.SimpleNotificationService;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 using Amazon.S3.Util;
+using Amazon.CloudFront;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Amazon.SimpleNotificationService.Model;
 
 namespace CodePanthers.AWS.S3.UploadService.Services
 {
@@ -18,16 +17,21 @@ namespace CodePanthers.AWS.S3.UploadService.Services
     public class FileUploadService : IFileUploadService
     {
         private readonly IAmazonS3 _client;
-        private readonly string BucketName;
         private readonly INotificationService _notificationService;
+        
+        private readonly string BucketName;
+        private readonly string CloudFronDomain;
+        private readonly string CloudFrontKeyId;
         private readonly long MB = (long)Math.Pow(2, 20);
         private readonly int ExpirationDurationInHours;
 
-        public FileUploadService(IAmazonS3 s3Client,INotificationService notificationService, IConfiguration Configuration)
+        public FileUploadService(IAmazonS3 s3Client, INotificationService notificationService, IConfiguration Configuration)
         {
             _client = s3Client;
             _notificationService = notificationService;
             BucketName = Configuration["S3BucketName"];
+            CloudFronDomain = Configuration["CloudFrontDomain"];
+            CloudFrontKeyId = Configuration["CloudFrontKeyId"];
             ExpirationDurationInHours = int.Parse(Configuration["S3ObjectExpirationHours"]);
         }
 
@@ -41,7 +45,7 @@ namespace CodePanthers.AWS.S3.UploadService.Services
             try
             {
                 var key = Path.GetRandomFileName() + Guid.NewGuid().ToString() + Path.GetExtension(file.FileName).ToLowerInvariant();
-                
+
                 if (await UploadFileToS3(file, key))
                 {
                     var getUrlRequest = new GetPreSignedUrlRequest
@@ -51,7 +55,7 @@ namespace CodePanthers.AWS.S3.UploadService.Services
                         Expires = DateTime.UtcNow.AddHours(ExpirationDurationInHours),
                     };
                     await _notificationService.SendUploadNotification("hello");
-                    return _client.GetPreSignedURL(getUrlRequest);
+                    return GetPrivateUrl(key);
                 }
 
                 return null;
@@ -112,6 +116,22 @@ namespace CodePanthers.AWS.S3.UploadService.Services
             }
         }
 
-        
+        private string GetPrivateUrl(string file)
+        {
+            try
+            {
+                return
+                    AmazonCloudFrontUrlSigner.GetCannedSignedURL(
+                        "https://" + CloudFronDomain + "/" +  file,
+                        new StreamReader(@"PrivateKey.pem"),
+                        CloudFrontKeyId,
+                        DateTime.Now.AddDays(7)
+                    );
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
     }
 }
